@@ -56,13 +56,13 @@ function displayContent(content, isFillerText = false) {
   paragraph.textContent = content;
   paragraph.style.color = 'black';
   summaryContainer.appendChild(paragraph);
-  console.log('Content updated');
+  console.log('Content updated:', content);
 }
 
 // Function to extract email content
 function extractEmailContent() {
   console.log('Extracting email content');
-  const emailBody = document.querySelector('.adn.ads');
+  const emailBody = document.querySelector('.a3s.aiL');
   if (emailBody) {
     console.log('Email body found');
     return emailBody.innerText;
@@ -73,58 +73,87 @@ function extractEmailContent() {
 
 // Function to check if an email thread is open
 function isEmailThreadOpen() {
-  const emailSubject = document.querySelector('.hP');
-  const emailSender = document.querySelector('.hP .gD');
-  const emailBody = document.querySelector('.adn.ads');
-  return !!(emailSubject && emailSender && emailBody);
+  console.log('Checking if email thread is open');
+  const url = window.location.href;
+  const isThreadView = url.includes('#inbox/') || url.includes('#all/');
+  const emailSubject = document.querySelector('h2.hP');
+  const emailSender = document.querySelector('.gD');
+  const emailBody = document.querySelector('.a3s.aiL');
+  const isOpen = isThreadView && !!(emailSubject && emailSender && emailBody);
+  console.log('Email thread open:', isOpen);
+  console.log('URL:', url);
+  console.log('Is thread view:', isThreadView);
+  console.log('Email subject:', emailSubject ? emailSubject.textContent : 'Not found');
+  console.log('Email sender:', emailSender ? emailSender.textContent : 'Not found');
+  console.log('Email body present:', !!emailBody);
+  return isOpen;
 }
 
 // Function to handle email content
 function handleEmailContent() {
   console.log('Handling email content');
+  displayPlaceholderText(); // Always display placeholder text
+
   if (isEmailThreadOpen()) {
     console.log('Email thread is open');
-    displayPlaceholderText();
     const emailContent = extractEmailContent();
     if (emailContent.trim()) {
+      console.log('Email content extracted, sending to background script');
       chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
         if (response && response.summary) {
           console.log('Summary received from background script');
           displayContent(response.summary);
         } else {
           console.log('No summary received or error occurred');
-          displayPlaceholderText();
         }
       });
+    } else {
+      console.log('No email content extracted');
     }
   } else {
-    displayFillerText();
+    console.log('Email thread is not open');
   }
 }
 
 // Function to display placeholder text
 function displayPlaceholderText() {
   const placeholderText = "this is where the summary and suggested response will be";
+  console.log('Displaying placeholder text:', placeholderText);
   displayContent(placeholderText, false);
 }
 
 // Function to display filler text
 function displayFillerText() {
   const fillerText = "Hi! I'm your Gmail assistant. I don't interact with this page, but if you open an email thread I can summarize the contents, help you respond to the thread, and provide helpful ideas for you.";
+  console.log('Displaying filler text');
   displayContent(fillerText, true);
 }
 
 // Initialize the content script
 function init() {
   console.log('Initializing content script');
-  displayFillerText();
 
-  // Set up an interval to periodically check for changes
+  // Display the placeholder text immediately
+  displayPlaceholderText();
+
+  // Set up an interval to periodically check for changes and update the UI
   setInterval(() => {
+    console.log('Periodic check triggered');
     handleEmailContent();
   }, 2000); // Check every 2 seconds
 
-  console.log('Periodic check set up for changes');
+  // Listen for URL changes
+  let lastUrl = location.href;
+  new MutationObserver(() => {
+    const url = location.href;
+    if (url !== lastUrl) {
+      lastUrl = url;
+      console.log('URL changed, handling email content');
+      handleEmailContent();
+    }
+  }).observe(document, { subtree: true, childList: true });
+
+  console.log('Periodic check and URL observer set up');
 }
 
 // Run the initialization
