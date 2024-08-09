@@ -83,6 +83,8 @@ function isEmailThreadOpen() {
 function handleEmailContent() {
   console.log('Handling email content');
   if (isEmailThreadOpen()) {
+    console.log('Email thread is open');
+    displayPlaceholderText();
     const emailContent = extractEmailContent();
     if (emailContent.trim()) {
       chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
@@ -91,15 +93,19 @@ function handleEmailContent() {
           displayContent(response.summary);
         } else {
           console.log('No summary received or error occurred');
-          displayFillerText();
+          displayPlaceholderText();
         }
       });
-    } else {
-      displayFillerText();
     }
   } else {
     displayFillerText();
   }
+}
+
+// Function to display placeholder text
+function displayPlaceholderText() {
+  const placeholderText = "this is where the summary and suggested response will be";
+  displayContent(placeholderText, false);
 }
 
 // Function to display filler text
