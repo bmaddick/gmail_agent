@@ -62,32 +62,41 @@ function displayContent(content, isFillerText = false) {
 // Function to extract email content
 function extractEmailContent() {
   console.log('Extracting email content');
-  // This function now extracts content from the entire page
-  // You may need to adjust this based on Gmail's DOM structure
   const emailBody = document.querySelector('.adn.ads');
   if (emailBody) {
     console.log('Email body found');
     return emailBody.innerText;
   }
-  // Fallback to the entire body if specific email content is not found
-  console.log('Email body not found, falling back to entire body content');
-  return document.body.innerText;
+  console.log('Email body not found');
+  return '';
+}
+
+// Function to check if an email thread is open
+function isEmailThreadOpen() {
+  const emailSubject = document.querySelector('.hP');
+  const emailSender = document.querySelector('.hP .gD');
+  const emailBody = document.querySelector('.adn.ads');
+  return !!(emailSubject && emailSender && emailBody);
 }
 
 // Function to handle email content
 function handleEmailContent() {
   console.log('Handling email content');
-  const emailContent = extractEmailContent();
-  if (emailContent.trim()) {
-    chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
-      if (response && response.summary) {
-        console.log('Summary received from background script');
-        displayContent(response.summary);
-      } else {
-        console.log('No summary received or error occurred');
-        displayFillerText();
-      }
-    });
+  if (isEmailThreadOpen()) {
+    const emailContent = extractEmailContent();
+    if (emailContent.trim()) {
+      chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
+        if (response && response.summary) {
+          console.log('Summary received from background script');
+          displayContent(response.summary);
+        } else {
+          console.log('No summary received or error occurred');
+          displayFillerText();
+        }
+      });
+    } else {
+      displayFillerText();
+    }
   } else {
     displayFillerText();
   }
@@ -104,9 +113,19 @@ function init() {
   console.log('Initializing content script');
   displayFillerText();
 
-  // Set up an interval to periodically check for changes
-  setInterval(handleEmailContent, 5000); // Check every 5 seconds
-  console.log('Interval set for periodic checks');
+  // Set up a MutationObserver to detect changes in the DOM
+  const observer = new MutationObserver((mutations) => {
+    if (isEmailThreadOpen()) {
+      handleEmailContent();
+    } else {
+      displayFillerText();
+    }
+  });
+
+  // Start observing the document with the configured parameters
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  console.log('MutationObserver set up for DOM changes');
 }
 
 // Run the initialization
