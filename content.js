@@ -18,9 +18,9 @@ function createSummaryContainer() {
       right: 20px;
       width: 300px;
       height: calc(100vh - 80px);
-      background-color: #00D084;
-      color: white;
-      border: 1px solid #00B070;
+      background-color: white;
+      color: black;
+      border: 1px solid black;
       border-radius: 8px;
       padding: 16px;
       overflow-y: auto;
@@ -48,13 +48,13 @@ function displayContent(content, isFillerText = false) {
   // Create and append header
   const header = document.createElement('h3');
   header.textContent = isFillerText ? 'Gmail Assistant' : 'Email Summary';
-  header.style.color = 'white';
+  header.style.color = 'black';
   summaryContainer.appendChild(header);
 
   // Create and append paragraph
   const paragraph = document.createElement('p');
   paragraph.textContent = content;
-  paragraph.style.color = 'white';
+  paragraph.style.color = 'black';
   summaryContainer.appendChild(paragraph);
   console.log('Content updated');
 }
