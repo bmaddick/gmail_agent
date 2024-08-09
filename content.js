@@ -113,19 +113,12 @@ function init() {
   console.log('Initializing content script');
   displayFillerText();
 
-  // Set up a MutationObserver to detect changes in the DOM
-  const observer = new MutationObserver((mutations) => {
-    if (isEmailThreadOpen()) {
-      handleEmailContent();
-    } else {
-      displayFillerText();
-    }
-  });
+  // Set up an interval to periodically check for changes
+  setInterval(() => {
+    handleEmailContent();
+  }, 2000); // Check every 2 seconds
 
-  // Start observing the document with the configured parameters
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  console.log('MutationObserver set up for DOM changes');
+  console.log('Periodic check set up for changes');
 }
 
 // Run the initialization
