@@ -18,12 +18,14 @@ function createSummaryContainer() {
       right: 20px;
       width: 300px;
       height: calc(100vh - 80px);
-      background-color: white;
-      border: 1px solid #ccc;
+      background-color: #00D084;
+      color: white;
+      border: 1px solid #00B070;
       border-radius: 8px;
       padding: 16px;
       overflow-y: auto;
       z-index: 1000;
+      font-family: Arial, sans-serif;
     `;
     document.body.appendChild(summaryContainer);
     console.log('Summary container appended to body');
@@ -33,9 +35,9 @@ function createSummaryContainer() {
   return summaryContainer;
 }
 
-// Function to display the summary
-function displaySummary(summary) {
-  console.log('Displaying summary');
+// Function to display the summary or filler text
+function displayContent(content, isFillerText = false) {
+  console.log('Displaying content');
   const summaryContainer = createSummaryContainer();
 
   // Clear previous content
@@ -45,14 +47,16 @@ function displaySummary(summary) {
 
   // Create and append header
   const header = document.createElement('h3');
-  header.textContent = 'Email Summary';
+  header.textContent = isFillerText ? 'Gmail Assistant' : 'Email Summary';
+  header.style.color = 'white';
   summaryContainer.appendChild(header);
 
   // Create and append paragraph
   const paragraph = document.createElement('p');
-  paragraph.textContent = summary;
+  paragraph.textContent = content;
+  paragraph.style.color = 'white';
   summaryContainer.appendChild(paragraph);
-  console.log('Summary content updated');
+  console.log('Content updated');
 }
 
 // Function to extract email content
@@ -74,22 +78,31 @@ function extractEmailContent() {
 function handleEmailContent() {
   console.log('Handling email content');
   const emailContent = extractEmailContent();
-  chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
-    if (response && response.summary) {
-      console.log('Summary received from background script');
-      displaySummary(response.summary);
-    } else {
-      console.log('No summary received or error occurred');
-    }
-  });
+  if (emailContent.trim()) {
+    chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
+      if (response && response.summary) {
+        console.log('Summary received from background script');
+        displayContent(response.summary);
+      } else {
+        console.log('No summary received or error occurred');
+        displayFillerText();
+      }
+    });
+  } else {
+    displayFillerText();
+  }
+}
+
+// Function to display filler text
+function displayFillerText() {
+  const fillerText = "Hi! I'm your Gmail assistant. I don't interact with this page, but if you open an email thread I can summarize the contents, help you respond to the thread, and provide helpful ideas for you.";
+  displayContent(fillerText, true);
 }
 
 // Initialize the content script
 function init() {
   console.log('Initializing content script');
-  createSummaryContainer();
-  // Initial call to handle email content
-  handleEmailContent();
+  displayFillerText();
 
   // Set up an interval to periodically check for changes
   setInterval(handleEmailContent, 5000); // Check every 5 seconds
