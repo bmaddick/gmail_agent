@@ -34,8 +34,14 @@ function createSummaryContainer() {
       z-index: 1000;
       font-family: Arial, sans-serif;
     `;
-    document.body.appendChild(summaryContainer);
-    console.log('Summary container appended to body');
+    const mainContainer = document.querySelector('div[role="main"]');
+    if (mainContainer) {
+      mainContainer.appendChild(summaryContainer);
+      console.log('Summary container appended to main container');
+    } else {
+      document.body.appendChild(summaryContainer);
+      console.log('Main container not found, summary container appended to body');
+    }
   } else {
     console.log('Summary container already exists');
   }
@@ -90,16 +96,18 @@ function isEmailThreadOpen() {
   const url = window.location.href;
   const isThreadView = url.includes('#inbox/') || url.includes('#all/');
 
-  // Updated selectors for Gmail's current DOM structure
-  const emailSubject = document.querySelector('.hP');
-  const emailSender = document.querySelector('.gD, .go');
-  const emailBody = document.querySelector('.a3s.aiL, .gs');
+  // Updated selector for Gmail's current DOM structure
+  const mainContainer = document.querySelector('div[role="main"]');
+  const emailSubject = mainContainer ? mainContainer.querySelector('.hP') : null;
+  const emailSender = mainContainer ? mainContainer.querySelector('.gD, .go') : null;
+  const emailBody = mainContainer ? mainContainer.querySelector('.a3s.aiL, .gs') : null;
 
-  const isOpen = isThreadView && !!(emailSubject && emailSender && emailBody);
+  const isOpen = isThreadView && !!(mainContainer && emailSubject && emailSender && emailBody);
 
   console.log('Email thread open:', isOpen);
   console.log('URL:', url);
   console.log('Is thread view:', isThreadView);
+  console.log('Main container present:', !!mainContainer);
   console.log('Email subject:', emailSubject ? emailSubject.textContent.trim() : 'Not found');
   console.log('Email sender:', emailSender ? emailSender.textContent.trim() : 'Not found');
   console.log('Email body present:', !!emailBody);
@@ -107,6 +115,7 @@ function isEmailThreadOpen() {
   // Additional logging for debugging
   if (!isOpen) {
     console.log('Missing elements:', {
+      mainContainer: !mainContainer,
       subject: !emailSubject,
       sender: !emailSender,
       body: !emailBody
@@ -141,7 +150,6 @@ function handleEmailContent() {
     }
   } else {
     console.log('Email thread is not open');
-    displayFillerText();
   }
 }
 
@@ -197,13 +205,21 @@ function init() {
     }
   });
 
-  // Observe the entire body for changes
-  gmailObserver.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-
-  console.log('Gmail interface observer set up');
+  // Observe the main container for changes
+  const mainContainer = document.querySelector('div[role="main"]');
+  if (mainContainer) {
+    gmailObserver.observe(mainContainer, {
+      childList: true,
+      subtree: true
+    });
+    console.log('Gmail interface observer set up on main container');
+  } else {
+    console.warn('Main container not found, observing body instead');
+    gmailObserver.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
 
   // Clean up function
   function cleanup() {
