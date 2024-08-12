@@ -3,6 +3,13 @@
 console.log('Gmail Agent content script loaded - Script start');
 console.log('Current URL:', window.location.href);
 console.log('Document readyState:', document.readyState);
+console.log('Window location:', window.location);
+console.log('Document title:', document.title);
+console.log('Gmail interface elements:', {
+  inbox: !!document.querySelector('.nH.bkK'),
+  emailList: !!document.querySelector('.AO'),
+  emailView: !!document.querySelector('.nH.bkK.nn')
+});
 
 // Function to create and display the summary container
 function createSummaryContainer() {
@@ -62,12 +69,18 @@ function displayContent(content, isFillerText = false) {
 // Function to extract email content
 function extractEmailContent() {
   console.log('Extracting email content');
-  const emailBody = document.querySelector('.a3s.aiL');
-  if (emailBody) {
-    console.log('Email body found');
-    return emailBody.innerText;
+  const selectors = ['.a3s.aiL', '.gs', '.gE.iv.gt', '.ii.gt'];
+  let emailBody;
+
+  for (const selector of selectors) {
+    emailBody = document.querySelector(selector);
+    if (emailBody) {
+      console.log(`Email body found with selector: ${selector}`);
+      return emailBody.innerText;
+    }
   }
-  console.log('Email body not found');
+
+  console.log('Email body not found with any selector');
   return '';
 }
 
@@ -76,16 +89,30 @@ function isEmailThreadOpen() {
   console.log('Checking if email thread is open');
   const url = window.location.href;
   const isThreadView = url.includes('#inbox/') || url.includes('#all/');
-  const emailSubject = document.querySelector('h2.hP');
-  const emailSender = document.querySelector('.gD');
-  const emailBody = document.querySelector('.a3s.aiL');
+
+  // Updated selectors for Gmail's current DOM structure
+  const emailSubject = document.querySelector('.hP');
+  const emailSender = document.querySelector('.gD, .go');
+  const emailBody = document.querySelector('.a3s.aiL, .gs');
+
   const isOpen = isThreadView && !!(emailSubject && emailSender && emailBody);
+
   console.log('Email thread open:', isOpen);
   console.log('URL:', url);
   console.log('Is thread view:', isThreadView);
-  console.log('Email subject:', emailSubject ? emailSubject.textContent : 'Not found');
-  console.log('Email sender:', emailSender ? emailSender.textContent : 'Not found');
+  console.log('Email subject:', emailSubject ? emailSubject.textContent.trim() : 'Not found');
+  console.log('Email sender:', emailSender ? emailSender.textContent.trim() : 'Not found');
   console.log('Email body present:', !!emailBody);
+
+  // Additional logging for debugging
+  if (!isOpen) {
+    console.log('Missing elements:', {
+      subject: !emailSubject,
+      sender: !emailSender,
+      body: !emailBody
+    });
+  }
+
   return isOpen;
 }
 
@@ -98,20 +125,23 @@ function handleEmailContent() {
     console.log('Email thread is open');
     const emailContent = extractEmailContent();
     if (emailContent.trim()) {
-      console.log('Email content extracted, sending to background script');
+      console.log('Email content extracted, length:', emailContent.length);
       chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
         if (response && response.summary) {
-          console.log('Summary received from background script');
+          console.log('Summary received from background script, length:', response.summary.length);
           displayContent(response.summary);
         } else {
-          console.log('No summary received or error occurred');
+          console.error('No summary received or error occurred');
+          displayContent('Failed to generate summary. Please try again.');
         }
       });
     } else {
-      console.log('No email content extracted');
+      console.warn('No email content extracted');
+      displayContent('Unable to extract email content. Please try reopening the email.');
     }
   } else {
     console.log('Email thread is not open');
+    displayFillerText();
   }
 }
 
@@ -136,24 +166,58 @@ function init() {
   // Display the placeholder text immediately
   displayPlaceholderText();
 
-  // Set up an interval to periodically check for changes and update the UI
-  setInterval(() => {
-    console.log('Periodic check triggered');
+  // Function to check for changes and update content
+  function checkAndUpdate() {
+    console.log('Checking for changes and updating content');
     handleEmailContent();
-  }, 2000); // Check every 2 seconds
+  }
+
+  // Set up periodic checks
+  const updateInterval = setInterval(checkAndUpdate, 1000); // Check every second
 
   // Listen for URL changes
   let lastUrl = location.href;
-  new MutationObserver(() => {
-    const url = location.href;
-    if (url !== lastUrl) {
-      lastUrl = url;
-      console.log('URL changed, handling email content');
-      handleEmailContent();
+  const urlCheckInterval = setInterval(() => {
+    const currentUrl = location.href;
+    if (currentUrl !== lastUrl) {
+      lastUrl = currentUrl;
+      console.log('URL changed:', currentUrl);
+      checkAndUpdate();
     }
-  }).observe(document, { subtree: true, childList: true });
+  }, 500); // Check every 500ms for URL changes
 
-  console.log('Periodic check and URL observer set up');
+  // Use MutationObserver to detect changes in the Gmail interface
+  const gmailObserver = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+      if (mutation.type === 'childList' || mutation.type === 'subtree') {
+        console.log('Gmail interface changed, updating content');
+        checkAndUpdate();
+        break; // Only need to update once per batch of mutations
+      }
+    }
+  });
+
+  // Observe the entire body for changes
+  gmailObserver.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+
+  console.log('Gmail interface observer set up');
+
+  // Clean up function
+  function cleanup() {
+    clearInterval(updateInterval);
+    clearInterval(urlCheckInterval);
+    gmailObserver.disconnect();
+    console.log('Content script cleanup performed');
+  }
+
+  // Listen for extension unload
+  chrome.runtime.onSuspend.addListener(cleanup);
+
+  // Initial check for email content
+  checkAndUpdate();
 }
 
 // Run the initialization
