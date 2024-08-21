@@ -17,22 +17,57 @@ function createSummaryContainer() {
       top: 60px;
       right: 20px;
       width: 300px;
-      height: calc(100vh - 80px);
+      max-height: calc(100vh - 80px);
       background-color: white;
       color: black;
-      border: 1px solid black;
+      border: 1px solid #ccc;
       border-radius: 8px;
       padding: 16px;
       overflow-y: auto;
       z-index: 1000;
       font-family: Arial, sans-serif;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     `;
     document.body.appendChild(summaryContainer);
     console.log('Summary container appended to body');
+
+    // Add user controls
+    const controlsDiv = document.createElement('div');
+    controlsDiv.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    `;
+
+    const toggleButton = document.createElement('button');
+    toggleButton.textContent = 'Hide Summary';
+    toggleButton.onclick = toggleSummary;
+
+    const refreshButton = document.createElement('button');
+    refreshButton.textContent = 'Refresh';
+    refreshButton.onclick = handleEmailContent;
+
+    controlsDiv.appendChild(toggleButton);
+    controlsDiv.appendChild(refreshButton);
+    summaryContainer.appendChild(controlsDiv);
   } else {
     console.log('Summary container already exists');
   }
   return summaryContainer;
+}
+
+function toggleSummary() {
+  const summaryContainer = document.getElementById('gmail-agent-summary');
+  const toggleButton = summaryContainer.querySelector('button');
+  if (summaryContainer.style.height === '30px') {
+    summaryContainer.style.height = 'auto';
+    summaryContainer.style.maxHeight = 'calc(100vh - 80px)';
+    toggleButton.textContent = 'Hide Summary';
+  } else {
+    summaryContainer.style.height = '30px';
+    summaryContainer.style.overflow = 'hidden';
+    toggleButton.textContent = 'Show Summary';
+  }
 }
 
 // Function to display the summary or filler text
@@ -62,12 +97,16 @@ function displayContent(content, isFillerText = false) {
 // Function to extract email content
 function extractEmailContent() {
   console.log('Extracting email content');
-  const emailBody = document.querySelector('.a3s.aiL');
-  if (emailBody) {
-    console.log('Email body found');
-    return emailBody.innerText;
+  const emailBodies = document.querySelectorAll('.a3s.aiL');
+  if (emailBodies.length > 0) {
+    console.log(`Found ${emailBodies.length} email bodies`);
+    let fullContent = '';
+    emailBodies.forEach((body, index) => {
+      fullContent += `Email ${index + 1}:\n${body.innerText}\n\n`;
+    });
+    return fullContent.trim();
   }
-  console.log('Email body not found');
+  console.log('No email bodies found');
   return '';
 }
 
@@ -136,24 +175,37 @@ function init() {
   // Display the placeholder text immediately
   displayPlaceholderText();
 
-  // Set up an interval to periodically check for changes and update the UI
-  setInterval(() => {
-    console.log('Periodic check triggered');
-    handleEmailContent();
-  }, 2000); // Check every 2 seconds
-
-  // Listen for URL changes
+  // Set up a more efficient check for changes
   let lastUrl = location.href;
-  new MutationObserver(() => {
-    const url = location.href;
-    if (url !== lastUrl) {
-      lastUrl = url;
+  let lastEmailContent = '';
+
+  const checkForChanges = () => {
+    const currentUrl = location.href;
+    if (currentUrl !== lastUrl) {
+      lastUrl = currentUrl;
       console.log('URL changed, handling email content');
       handleEmailContent();
+    } else if (isEmailThreadOpen()) {
+      const currentEmailContent = extractEmailContent();
+      if (currentEmailContent !== lastEmailContent) {
+        lastEmailContent = currentEmailContent;
+        console.log('Email content changed, handling email content');
+        handleEmailContent();
+      }
     }
-  }).observe(document, { subtree: true, childList: true });
+  };
 
-  console.log('Periodic check and URL observer set up');
+  // Use requestAnimationFrame for smoother performance
+  const scheduleCheck = () => {
+    requestAnimationFrame(() => {
+      checkForChanges();
+      setTimeout(scheduleCheck, 1000); // Check every second
+    });
+  };
+
+  scheduleCheck();
+
+  console.log('Efficient change detection set up');
 }
 
 // Run the initialization
