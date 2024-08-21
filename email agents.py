@@ -1,68 +1,98 @@
 import ollama
 from flask import Flask, request, jsonify
 import threading
+import logging
 
 app = Flask(__name__)
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 def summarize_email(email_content):
+    logger.info(f"Summarizing email with content length: {len(email_content)}")
     prompt = f"""{email_content} #### Summarize the contents of this email, then
                     list any next steps that need to be taken and
                     by whom they should be taken."""
-    
-    response = ollama.chat(model="llama3", messages=[
-        {
-            "role": "user",
-            "content": prompt,
-        }
-    ])
-    
-    return response["message"]["content"]
+
+    try:
+        response = ollama.chat(model="llama3", messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ])
+        logger.info("Email summarization successful")
+        return response["message"]["content"]
+    except Exception as e:
+        logger.error(f"Error in summarize_email: {str(e)}")
+        raise
 
 def draft_response(summary):
-    prompt = f"""{summary} #### Draft a 
+    logger.info(f"Drafting response based on summary length: {len(summary)}")
+    prompt = f"""{summary} #### Draft a
             response email based on the contents of the thread."""
-    
-    response = ollama.chat(model="llama3", messages=[
-        {
-            "role": "user",
-            "content": prompt,
-        }
-    ])
-    
-    return response["message"]["content"]
+
+    try:
+        response = ollama.chat(model="llama3", messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ])
+        logger.info("Response drafting successful")
+        return response["message"]["content"]
+    except Exception as e:
+        logger.error(f"Error in draft_response: {str(e)}")
+        raise
 
 @app.route('/summarize', methods=['POST'])
 def handle_summarize():
+    logger.info("Received request to /summarize endpoint")
     email_content = request.json.get('email_content')
     if not email_content:
+        logger.warning("No email content provided in request")
         return jsonify({"error": "No email content provided"}), 400
-    
-    summary = summarize_email(email_content)
-    return jsonify({"summary": summary})
+
+    try:
+        summary = summarize_email(email_content)
+        logger.info("Successfully summarized email")
+        return jsonify({"summary": summary})
+    except Exception as e:
+        logger.error(f"Error in handle_summarize: {str(e)}")
+        return jsonify({"error": "An error occurred while summarizing the email"}), 500
 
 @app.route('/draft', methods=['POST'])
 def handle_draft():
+    logger.info("Received request to /draft endpoint")
     summary = request.json.get('summary')
     if not summary:
+        logger.warning("No summary provided in request")
         return jsonify({"error": "No summary provided"}), 400
-    
-    draft = draft_response(summary)
-    return jsonify({"draft": draft})
+
+    try:
+        draft = draft_response(summary)
+        logger.info("Successfully drafted response")
+        return jsonify({"draft": draft})
+    except Exception as e:
+        logger.error(f"Error in handle_draft: {str(e)}")
+        return jsonify({"error": "An error occurred while drafting the response"}), 500
 
 def run_flask_app():
+    logger.info("Starting Flask app")
     app.run(host='localhost', port=5000)
 
 if __name__ == "__main__":
     # Start the Flask app in a separate thread
     flask_thread = threading.Thread(target=run_flask_app)
     flask_thread.start()
-    
-    print("Email processing service is running. Use Ctrl+C to stop.")
-    
+
+    logger.info("Email processing service is running. Use Ctrl+C to stop.")
+
     try:
         flask_thread.join()
     except KeyboardInterrupt:
-        print("Shutting down the service...")
+        logger.info("Shutting down the service...")
 
 # The following code is kept for reference and backwards compatibility
 # It can be removed once the new API is fully integrated with the extension
@@ -70,23 +100,19 @@ if __name__ == "__main__":
 # Load the text from the file output by llama
 with open('email_data.txt', 'r') as file:
     data = file.read()
-print()
+logger.info("Loaded email data from file")
 
 # Debugging statement to confirm file was loaded
 if data:
-    print("File loaded successfully.")
+    logger.info("File loaded successfully.")
 else:
-    print("File loading failed or file is empty.")
-print()
+    logger.warning("File loading failed or file is empty.")
 
 prompt_01 = f"""{data} #### Summarize the contents of this email, then
                     list any next steps that need to be taken and
                     by whom they should be taken."""
-# print("<agent-01. Prompt: " + prompt_01)
-# print()
 
-print("<agent-01> Generating a response...")
-print()
+logger.info("Generating response for agent-01")
 
 # Get a response from Agent 1 - Email summarizer
 response_01 = ollama.chat(model="llama3", messages =[
@@ -96,16 +122,13 @@ response_01 = ollama.chat(model="llama3", messages =[
     }
 ])
 
-print(response_01["message"], ["content"])
+logger.info("Response generated for agent-01")
 
 # Set the prompt for the second agent
-prompt_02 = f"""{response_01['message']['content']} #### Draft a 
+prompt_02 = f"""{response_01['message']['content']} #### Draft a
             response email based on the contents of the thread."""
 
-print("<agent-02> Prompt: " + prompt_02)
-print()
-
-print("<agent-02 Generating a response...")
+logger.info("Generating response for agent-02")
 
 #Get a response from Agent 2 - Teacher
 response_02 = ollama.chat(model="llama3", messages=[
@@ -115,5 +138,4 @@ response_02 = ollama.chat(model="llama3", messages=[
     }
 ])
 
-#Print out the final response from agent 2
-print("<agent-02> Response: " + response_02["message"]["content"])
+logger.info("Response generated for agent-02")
