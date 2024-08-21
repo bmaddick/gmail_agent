@@ -70,8 +70,8 @@ function toggleSummary() {
   }
 }
 
-// Function to display the summary or filler text
-function displayContent(content, isFillerText = false) {
+// Function to display the summary or error message
+function displayContent(content, isError = false) {
   console.log('Displaying content');
   const summaryContainer = createSummaryContainer();
 
@@ -82,14 +82,14 @@ function displayContent(content, isFillerText = false) {
 
   // Create and append header
   const header = document.createElement('h3');
-  header.textContent = isFillerText ? 'Gmail Assistant' : 'Email Summary';
-  header.style.color = 'black';
+  header.textContent = isError ? 'Error' : 'Email Summary';
+  header.style.color = isError ? 'red' : 'black';
   summaryContainer.appendChild(header);
 
   // Create and append paragraph
   const paragraph = document.createElement('p');
   paragraph.textContent = content;
-  paragraph.style.color = 'black';
+  paragraph.style.color = isError ? 'red' : 'black';
   summaryContainer.appendChild(paragraph);
   console.log('Content updated:', content);
 }
@@ -131,34 +131,33 @@ function isEmailThreadOpen() {
 // Function to handle email content
 function handleEmailContent() {
   console.log('Handling email content');
-  displayPlaceholderText(); // Always display placeholder text
 
   if (isEmailThreadOpen()) {
     console.log('Email thread is open');
     const emailContent = extractEmailContent();
     if (emailContent.trim()) {
       console.log('Email content extracted, sending to background script');
+      displayContent('Summarizing email...'); // Show loading message
       chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
         if (response && response.summary) {
           console.log('Summary received from background script');
           displayContent(response.summary);
+        } else if (response && response.error) {
+          console.log('Error occurred:', response.error);
+          displayContent(`Error: ${response.error}`, true);
         } else {
-          console.log('No summary received or error occurred');
+          console.log('No summary received or unexpected response');
+          displayContent('Failed to summarize email. Please try again.', true);
         }
       });
     } else {
       console.log('No email content extracted');
+      displayContent('No email content found.', true);
     }
   } else {
     console.log('Email thread is not open');
+    displayContent('Open an email to see its summary.', true);
   }
-}
-
-// Function to display placeholder text
-function displayPlaceholderText() {
-  const placeholderText = "this is where the summary and suggested response will be";
-  console.log('Displaying placeholder text:', placeholderText);
-  displayContent(placeholderText, false);
 }
 
 // Function to display filler text
@@ -172,8 +171,8 @@ function displayFillerText() {
 function init() {
   console.log('Initializing content script');
 
-  // Display the placeholder text immediately
-  displayPlaceholderText();
+  // Display the initial message
+  displayContent("Waiting for an email to be opened...");
 
   // Set up a more efficient check for changes
   let lastUrl = location.href;
