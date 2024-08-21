@@ -17,14 +17,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Function to communicate with the Python service
 async function summarizeEmail(content) {
-  // In a real implementation, this would communicate with the Python service
-  // For now, we'll use a placeholder summarization
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const summary = `This is a placeholder summary for the email content: "${content.substring(0, 50)}..."`;
-      resolve(summary);
-    }, 1000); // Simulate network delay
-  });
+  try {
+    const response = await fetch('http://localhost:5000/summarize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email_content: content }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.summary;
+  } catch (error) {
+    console.error('Error summarizing email:', error);
+    throw new Error('Failed to summarize email. Please try again later.');
+  }
 }
 
 // Initialize the background script
