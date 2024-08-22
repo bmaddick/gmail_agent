@@ -22,17 +22,25 @@ const logger = {
 // Function to handle messages from the content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'summarizeEmail') {
-    logger.log('Received summarizeEmail request: ' + JSON.stringify(request));
+    logger.log('Received summarizeEmail request from tab ' + sender.tab.id);
+    if (!request.content) {
+      logger.error('No email content provided in the request');
+      sendResponse({ error: 'No email content provided' });
+      return true;
+    }
     summarizeEmail(request.content)
       .then(summary => {
-        logger.log('Summarization successful: ' + summary);
+        logger.log('Summarization successful. Summary length: ' + summary.length);
         sendResponse({ summary: summary });
       })
       .catch(error => {
         logger.error('Error summarizing email: ' + error.message);
-        sendResponse({ error: error.message });
+        sendResponse({ error: 'Failed to summarize email: ' + error.message });
       });
     return true; // Indicates that the response is sent asynchronously
+  } else {
+    logger.error('Unknown action received: ' + request.action);
+    sendResponse({ error: 'Unknown action' });
   }
 });
 
@@ -66,6 +74,10 @@ async function summarizeEmail(content) {
     logger.error('Error stack: ' + error.stack);
     if (error.message.includes('Failed to fetch')) {
       throw new Error('Unable to connect to the summarization service. Please check if the service is running.');
+    } else if (error.message.includes('NetworkError')) {
+      throw new Error('Network error occurred. Please check your internet connection.');
+    } else if (error.message.includes('TimeoutError')) {
+      throw new Error('Request timed out. The summarization service might be overloaded or unresponsive.');
     }
     throw new Error('Failed to summarize email: ' + error.message);
   }
@@ -73,7 +85,25 @@ async function summarizeEmail(content) {
 
 // Initialize the background script
 function init() {
-  logger.log('Gmail Agent background script initialized');
+  try {
+    logger.log('Gmail Agent background script initializing...');
+
+    // Implement a periodic health check
+    setInterval(() => {
+      try {
+        // Perform a simple operation to check if the script is responsive
+        chrome.runtime.getPlatformInfo((info) => {
+          logger.log('Background script health check: OK');
+        });
+      } catch (error) {
+        logger.error('Health check failed: ' + error.message);
+      }
+    }, 60000); // Run every minute
+
+    logger.log('Gmail Agent background script initialized successfully');
+  } catch (error) {
+    logger.error('Error during background script initialization: ' + error.message);
+  }
 }
 
 // Run the initialization
