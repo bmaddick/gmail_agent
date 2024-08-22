@@ -7,23 +7,21 @@ app = Flask(__name__)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+file_handler = logging.FileHandler('email_agents.log')
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger = logging.getLogger(__name__)
+logger.addHandler(file_handler)
 
 def summarize_email(email_content):
     logger.info(f"Summarizing email with content length: {len(email_content)}")
-    prompt = f"""{email_content} #### Summarize the contents of this email, then
-                    list any next steps that need to be taken and
-                    by whom they should be taken."""
+    # Placeholder text for testing
+    placeholder_summary = "This text is sent from the python script and will be replaced with the email summary"
 
     try:
-        response = ollama.chat(model="llama3", messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ])
-        logger.info("Email summarization successful")
-        return response["message"]["content"]
+        # Log the placeholder usage
+        logger.info("Using placeholder summary for testing")
+        return placeholder_summary
     except Exception as e:
         logger.error(f"Error in summarize_email: {str(e)}")
         raise
