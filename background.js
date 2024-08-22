@@ -68,6 +68,7 @@ async function summarizeEmail(content) {
       throw new Error('Summary not found in response data');
     }
     logger.log('Successfully parsed response data');
+    console.log('Summary received:', data.summary); // New console.log statement
     return data.summary;
   } catch (error) {
     logger.error('Detailed error in summarizeEmail: ' + error);
@@ -82,6 +83,39 @@ async function summarizeEmail(content) {
     throw new Error('Failed to summarize email: ' + error.message);
   }
 }
+
+// Test case function with fake email content
+function testSummarizeEmail() {
+  const fakeEmailContent = `
+    Subject: Important Project Update
+
+    Dear Team,
+
+    I hope this email finds you well. I wanted to provide a quick update on our ongoing project:
+
+    1. We've successfully completed Phase 1 ahead of schedule.
+    2. The client has requested some minor changes to the UI design.
+    3. We need to schedule a team meeting to discuss Phase 2 implementation.
+
+    Please review the attached documents and let me know if you have any questions or concerns.
+
+    Best regards,
+    John Doe
+    Project Manager
+  `;
+
+  console.log('Testing summarizeEmail function with fake content...');
+  summarizeEmail(fakeEmailContent)
+    .then(summary => {
+      console.log('Test case summary:', summary);
+    })
+    .catch(error => {
+      console.error('Test case error:', error);
+    });
+}
+
+// Run the test case
+testSummarizeEmail();
 
 // Initialize the background script
 function init() {

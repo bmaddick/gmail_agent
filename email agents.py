@@ -105,35 +105,107 @@ def run_flask_app():
     app.run(host='localhost', port=5000)
 
 if __name__ == "__main__":
-    # Sample email content for testing
-    sample_email = """
-    Subject: Project Update Meeting
+    # Sample email contents for testing various types of emails
+    test_emails = [
+        {
+            "type": "Meeting Invite",
+            "content": """
+            Subject: Quarterly Review Meeting - Please Confirm Attendance
 
-    Dear Team,
+            Dear All,
 
-    I hope this email finds you well. I wanted to schedule a project update meeting for next week to discuss our progress on the XYZ initiative.
+            This is a reminder for our upcoming Quarterly Review Meeting scheduled for next Friday, June 15th, from 10:00 AM to 12:00 PM in the Main Conference Room.
 
-    Here are the key points we need to cover:
-    1. Current status of each team's deliverables
-    2. Any roadblocks or challenges faced
-    3. Next steps and timeline adjustments (if necessary)
+            Agenda:
+            1. Q2 Performance Review
+            2. Q3 Goals and Objectives
+            3. Budget Allocation for Q3
 
-    Please come prepared with a brief summary of your team's work. Let's aim for Tuesday at 2 PM. If this time doesn't work for anyone, please suggest alternatives.
+            Please confirm your attendance by responding to this email. If you cannot attend, please designate a representative from your department.
 
-    Looking forward to our discussion!
+            Best regards,
+            Sarah Johnson
+            Executive Assistant
+            """
+        },
+        {
+            "type": "Newsletter",
+            "content": """
+            Subject: TechCo Monthly Newsletter - June 2023
 
-    Best regards,
-    John Doe
-    Project Manager
-    """
+            Dear Subscribers,
 
-    logger.info("Starting email summarization test")
+            Welcome to our June newsletter! Here's what's new at TechCo:
 
-    try:
-        summary = summarize_email(sample_email)
-        logger.info("Email summarization successful")
-        logger.info(f"Generated summary:\n{summary}")
-    except Exception as e:
-        logger.error(f"Error during email summarization test: {str(e)}", exc_info=True)
+            1. Product Launch: We're excited to announce the release of TechPro 5.0!
+            2. Upcoming Webinar: "AI in Business" - Join us on June 20th at 2 PM EST.
+            3. Customer Spotlight: How ACME Corp increased productivity by 30% using our solutions.
+            4. Job Openings: We're hiring! Check out our careers page for current opportunities.
 
-    logger.info("Email summarization test completed")
+            Stay tuned for more updates!
+
+            The TechCo Team
+            """
+        },
+        {
+            "type": "Personal Email",
+            "content": """
+            Subject: Summer Vacation Plans
+
+            Hey Alex,
+
+            I hope you're doing well! I wanted to touch base about our summer vacation plans. I was thinking we could go to the beach for a week in August. What do you think?
+
+            I found a great rental house that's right on the water and can accommodate all of us. It's available from August 15-22. Let me know if those dates work for you and your family.
+
+            Also, do you have any preferences for activities? I was thinking we could do some kayaking, have a bonfire on the beach, and maybe take a day trip to the nearby town for some shopping and sightseeing.
+
+            Looking forward to hearing your thoughts!
+
+            Cheers,
+            Sam
+            """
+        },
+        {
+            "type": "Project Update",
+            "content": """
+            Subject: Project Phoenix - Week 12 Update
+
+            Dear Stakeholders,
+
+            I hope this email finds you well. Here's a summary of our progress on Project Phoenix for Week 12:
+
+            Accomplishments:
+            1. Completed the backend integration for the user authentication module
+            2. Finalized the UI designs for the dashboard and settings pages
+            3. Conducted successful load testing for up to 10,000 concurrent users
+
+            Challenges:
+            1. Encountered some issues with cross-browser compatibility, working on fixes
+
+            Next Steps:
+            1. Begin front-end implementation of the dashboard
+            2. Initiate the security audit process
+            3. Schedule user acceptance testing for the completed modules
+
+            We're still on track for our planned release date. Please let me know if you have any questions or concerns.
+
+            Best regards,
+            Emily Chen
+            Project Manager
+            """
+        }
+    ]
+
+    logger.info("Starting email summarization tests")
+
+    for test_email in test_emails:
+        logger.info(f"Testing {test_email['type']} email")
+        try:
+            summary = summarize_email(test_email['content'])
+            logger.info(f"Email summarization successful for {test_email['type']}")
+            logger.info(f"Generated summary:\n{summary}")
+        except Exception as e:
+            logger.error(f"Error during {test_email['type']} email summarization test: {str(e)}", exc_info=True)
+
+    logger.info("Email summarization tests completed")
