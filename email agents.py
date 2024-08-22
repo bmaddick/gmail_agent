@@ -19,17 +19,26 @@ def summarize_email(email_content):
     logger.info(f"Summarizing email with content length: {len(email_content)}")
     try:
         prompt = f"Summarize the following email content:\n\n{email_content}\n\nSummary:"
-        response = ollama.chat(model="llama3", messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ])
+        logger.info(f"Sending prompt to ollama.chat: {prompt[:100]}...")  # Log first 100 chars of prompt
+        response = ollama.chat(
+            model="llama2",  # Corrected model name
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ]
+        )
+        logger.info(f"Received response from ollama.chat: {response}")
         summary = response["message"]["content"].strip()
         logger.info(f"Successfully generated summary with length: {len(summary)}")
+        print(f"Generated summary: {summary}")  # Print the summary
         return summary
+    except ollama.ResponseError as e:
+        logger.error(f"Ollama API error in summarize_email: {str(e)}")
+        raise
     except Exception as e:
-        logger.error(f"Error in summarize_email: {str(e)}")
+        logger.error(f"Unexpected error in summarize_email: {str(e)}", exc_info=True)
         raise
 
 def draft_response(summary):
@@ -38,16 +47,25 @@ def draft_response(summary):
             response email based on the contents of the thread."""
 
     try:
-        response = ollama.chat(model="llama3", messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ])
+        logger.info(f"Sending prompt to ollama.chat for drafting: {prompt[:100]}...")
+        response = ollama.chat(
+            model="llama2",  # Corrected model name
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ]
+        )
+        logger.info(f"Received draft response from ollama.chat: {response}")
+        draft = response["message"]["content"]
         logger.info("Response drafting successful")
-        return response["message"]["content"]
+        return draft
+    except ollama.ResponseError as e:
+        logger.error(f"Ollama API error in draft_response: {str(e)}")
+        raise
     except Exception as e:
-        logger.error(f"Error in draft_response: {str(e)}")
+        logger.error(f"Unexpected error in draft_response: {str(e)}", exc_info=True)
         raise
 
 @app.route('/summarize', methods=['POST'])
@@ -63,7 +81,7 @@ def handle_summarize():
         logger.info("Successfully summarized email")
         return jsonify({"summary": summary})
     except Exception as e:
-        logger.error(f"Error in handle_summarize: {str(e)}")
+        logger.error(f"Error in handle_summarize: {str(e)}", exc_info=True)
         return jsonify({"error": "An error occurred while summarizing the email"}), 500
 
 @app.route('/draft', methods=['POST'])
@@ -79,7 +97,7 @@ def handle_draft():
         logger.info("Successfully drafted response")
         return jsonify({"draft": draft})
     except Exception as e:
-        logger.error(f"Error in handle_draft: {str(e)}")
+        logger.error(f"Error in handle_draft: {str(e)}", exc_info=True)
         return jsonify({"error": "An error occurred while drafting the response"}), 500
 
 def run_flask_app():
@@ -87,59 +105,35 @@ def run_flask_app():
     app.run(host='localhost', port=5000)
 
 if __name__ == "__main__":
-    # Start the Flask app in a separate thread
-    flask_thread = threading.Thread(target=run_flask_app)
-    flask_thread.start()
+    # Sample email content for testing
+    sample_email = """
+    Subject: Project Update Meeting
 
-    logger.info("Email processing service is running. Use Ctrl+C to stop.")
+    Dear Team,
+
+    I hope this email finds you well. I wanted to schedule a project update meeting for next week to discuss our progress on the XYZ initiative.
+
+    Here are the key points we need to cover:
+    1. Current status of each team's deliverables
+    2. Any roadblocks or challenges faced
+    3. Next steps and timeline adjustments (if necessary)
+
+    Please come prepared with a brief summary of your team's work. Let's aim for Tuesday at 2 PM. If this time doesn't work for anyone, please suggest alternatives.
+
+    Looking forward to our discussion!
+
+    Best regards,
+    John Doe
+    Project Manager
+    """
+
+    logger.info("Starting email summarization test")
 
     try:
-        flask_thread.join()
-    except KeyboardInterrupt:
-        logger.info("Shutting down the service...")
+        summary = summarize_email(sample_email)
+        logger.info("Email summarization successful")
+        logger.info(f"Generated summary:\n{summary}")
+    except Exception as e:
+        logger.error(f"Error during email summarization test: {str(e)}", exc_info=True)
 
-# The following code is kept for reference and backwards compatibility
-# It can be removed once the new API is fully integrated with the extension
-
-# Load the text from the file output by llama
-with open('email_data.txt', 'r') as file:
-    data = file.read()
-logger.info("Loaded email data from file")
-
-# Debugging statement to confirm file was loaded
-if data:
-    logger.info("File loaded successfully.")
-else:
-    logger.warning("File loading failed or file is empty.")
-
-prompt_01 = f"""{data} #### Summarize the contents of this email, then
-                    list any next steps that need to be taken and
-                    by whom they should be taken."""
-
-logger.info("Generating response for agent-01")
-
-# Get a response from Agent 1 - Email summarizer
-response_01 = ollama.chat(model="llama3", messages =[
-    {
-            "role": "user",
-            "content": prompt_01,
-    }
-])
-
-logger.info("Response generated for agent-01")
-
-# Set the prompt for the second agent
-prompt_02 = f"""{response_01['message']['content']} #### Draft a
-            response email based on the contents of the thread."""
-
-logger.info("Generating response for agent-02")
-
-#Get a response from Agent 2 - Teacher
-response_02 = ollama.chat(model="llama3", messages=[
-    {
-        "role": "user",
-        "content": prompt_02,
-    }
-])
-
-logger.info("Response generated for agent-02")
+    logger.info("Email summarization test completed")
