@@ -2,6 +2,8 @@ import ollama
 from flask import Flask, request, jsonify
 import threading
 import logging
+import json
+from typing import Dict, Any
 
 app = Flask(__name__)
 
@@ -15,13 +17,17 @@ logger.addHandler(file_handler)
 
 def summarize_email(email_content):
     logger.info(f"Summarizing email with content length: {len(email_content)}")
-    # Placeholder text for testing
-    placeholder_summary = "This text is sent from the python script and will be replaced with the email summary"
-
     try:
-        # Log the placeholder usage
-        logger.info("Using placeholder summary for testing")
-        return placeholder_summary
+        prompt = f"Summarize the following email content:\n\n{email_content}\n\nSummary:"
+        response = ollama.chat(model="llama3", messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ])
+        summary = response["message"]["content"].strip()
+        logger.info(f"Successfully generated summary with length: {len(summary)}")
+        return summary
     except Exception as e:
         logger.error(f"Error in summarize_email: {str(e)}")
         raise
