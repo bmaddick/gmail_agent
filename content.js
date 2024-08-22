@@ -138,18 +138,34 @@ function handleEmailContent() {
     if (emailContent.trim()) {
       console.log('Email content extracted, sending to background script');
       displayContent('Summarizing email...'); // Show loading message
-      chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
-        if (response && response.summary) {
-          console.log('Summary received from background script');
-          displayContent(response.summary);
-        } else if (response && response.error) {
-          console.log('Error occurred:', response.error);
-          displayContent(`Error: ${response.error}`, true);
-        } else {
-          console.log('No summary received or unexpected response');
-          displayContent('Failed to summarize email. Please try again.', true);
-        }
-      });
+
+      const sendMessageWithRetry = (retries = 3) => {
+        chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('Runtime error:', chrome.runtime.lastError);
+            if (retries > 0) {
+              console.log(`Retrying... (${retries} attempts left)`);
+              setTimeout(() => sendMessageWithRetry(retries - 1), 1000);
+            } else {
+              displayContent('Failed to communicate with the extension. Please refresh the page.', true);
+            }
+            return;
+          }
+
+          if (response && response.summary) {
+            console.log('Summary received from background script');
+            displayContent(response.summary);
+          } else if (response && response.error) {
+            console.log('Error occurred:', response.error);
+            displayContent(`Error: ${response.error}`, true);
+          } else {
+            console.log('No summary received or unexpected response');
+            displayContent('Failed to summarize email. Please try again.', true);
+          }
+        });
+      };
+
+      sendMessageWithRetry();
     } else {
       console.log('No email content extracted');
       displayContent('No email content found.', true);
@@ -177,6 +193,8 @@ function init() {
   // Set up a more efficient check for changes
   let lastUrl = location.href;
   let lastEmailContent = '';
+  let retryCount = 0;
+  const MAX_RETRIES = 3;
 
   const checkForChanges = () => {
     const currentUrl = location.href;
@@ -197,14 +215,37 @@ function init() {
   // Use requestAnimationFrame for smoother performance
   const scheduleCheck = () => {
     requestAnimationFrame(() => {
-      checkForChanges();
+      try {
+        checkForChanges();
+        retryCount = 0; // Reset retry count on successful execution
+      } catch (error) {
+        console.error('Error in checkForChanges:', error);
+        if (error.message.includes('Extension context invalidated')) {
+          if (retryCount < MAX_RETRIES) {
+            retryCount++;
+            console.log(`Retrying checkForChanges (${retryCount}/${MAX_RETRIES})`);
+            setTimeout(scheduleCheck, 1000 * retryCount); // Exponential backoff
+            return;
+          } else {
+            console.error('Max retries reached. Reinitializing content script.');
+            setTimeout(init, 5000); // Attempt to reinitialize after 5 seconds
+            return;
+          }
+        }
+      }
       setTimeout(scheduleCheck, 1000); // Check every second
     });
   };
 
   scheduleCheck();
 
-  console.log('Efficient change detection set up');
+  // Listen for extension context changes
+  chrome.runtime.onInstalled.addListener(() => {
+    console.log('Extension installed or updated. Reinitializing...');
+    init();
+  });
+
+  console.log('Robust change detection set up');
 }
 
 // Run the initialization
