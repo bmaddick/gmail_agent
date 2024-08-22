@@ -68,6 +68,7 @@ async function summarizeEmail(content) {
       throw new Error('Summary not found in response data');
     }
     logger.log('Successfully parsed response data');
+    console.log('Summary received:', data.summary); // New console.log statement
     return data.summary;
   } catch (error) {
     logger.error('Detailed error in summarizeEmail: ' + error);
