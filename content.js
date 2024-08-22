@@ -130,50 +130,55 @@ function isEmailThreadOpen() {
 
 // Function to handle email content
 function handleEmailContent() {
-  console.log('Handling email content');
+  console.log('Handling email content - Start');
 
   if (isEmailThreadOpen()) {
-    console.log('Email thread is open');
+    console.log('Email thread is open - Extracting content');
     const emailContent = extractEmailContent();
     if (emailContent.trim()) {
-      console.log('Email content extracted, sending to background script');
-      displayContent('Summarizing email...'); // Show loading message
+      console.log('Email content extracted successfully. Length:', emailContent.length);
+      displayContent('Summarizing email... Please wait.'); // Show loading message
 
       const sendMessageWithRetry = (retries = 3) => {
+        console.log(`Sending message to background script. Retries left: ${retries}`);
         chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
           if (chrome.runtime.lastError) {
             console.error('Runtime error:', chrome.runtime.lastError);
             if (retries > 0) {
-              console.log(`Retrying... (${retries} attempts left)`);
+              console.log(`Retrying in 1 second... (${retries} attempts left)`);
               setTimeout(() => sendMessageWithRetry(retries - 1), 1000);
             } else {
-              displayContent('Failed to communicate with the extension. Please refresh the page.', true);
+              console.error('Max retries reached. Unable to communicate with the extension.');
+              displayContent('Failed to communicate with the extension. Please refresh the page and try again.', true);
             }
             return;
           }
 
+          console.log('Received response from background script:', response);
           if (response && response.summary) {
-            console.log('Summary received from background script');
+            console.log('Summary received successfully. Length:', response.summary.length);
             displayContent(response.summary);
           } else if (response && response.error) {
-            console.log('Error occurred:', response.error);
-            displayContent(`Error: ${response.error}`, true);
+            console.error('Error received from background script:', response.error);
+            displayContent(`Error: ${response.error}. Please try again.`, true);
           } else {
-            console.log('No summary received or unexpected response');
-            displayContent('Failed to summarize email. Please try again.', true);
+            console.error('Unexpected response from background script:', response);
+            displayContent('Unexpected error occurred. Please try again or refresh the page.', true);
           }
         });
       };
 
       sendMessageWithRetry();
     } else {
-      console.log('No email content extracted');
-      displayContent('No email content found.', true);
+      console.warn('No email content extracted');
+      displayContent('No email content found. Please make sure an email is fully loaded.', true);
     }
   } else {
     console.log('Email thread is not open');
     displayContent('Open an email to see its summary.', true);
   }
+
+  console.log('Handling email content - End');
 }
 
 // Function to display filler text
@@ -185,7 +190,7 @@ function displayFillerText() {
 
 // Initialize the content script
 function init() {
-  console.log('Initializing content script');
+  console.log('Initializing content script - Start');
 
   // Display the initial message
   displayContent("Waiting for an email to be opened...");
@@ -194,19 +199,20 @@ function init() {
   let lastUrl = location.href;
   let lastEmailContent = '';
   let retryCount = 0;
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 5;
 
   const checkForChanges = () => {
+    console.log('Checking for changes...');
     const currentUrl = location.href;
     if (currentUrl !== lastUrl) {
       lastUrl = currentUrl;
-      console.log('URL changed, handling email content');
+      console.log('URL changed to:', currentUrl);
       handleEmailContent();
     } else if (isEmailThreadOpen()) {
       const currentEmailContent = extractEmailContent();
       if (currentEmailContent !== lastEmailContent) {
         lastEmailContent = currentEmailContent;
-        console.log('Email content changed, handling email content');
+        console.log('Email content changed, length:', currentEmailContent.length);
         handleEmailContent();
       }
     }
@@ -220,15 +226,21 @@ function init() {
         retryCount = 0; // Reset retry count on successful execution
       } catch (error) {
         console.error('Error in checkForChanges:', error);
-        if (error.message.includes('Extension context invalidated')) {
+        if (chrome.runtime.lastError) {
+          console.error('Chrome runtime error:', chrome.runtime.lastError);
+        }
+        if (error.message.includes('Extension context invalidated') || chrome.runtime.lastError) {
           if (retryCount < MAX_RETRIES) {
             retryCount++;
             console.log(`Retrying checkForChanges (${retryCount}/${MAX_RETRIES})`);
             setTimeout(scheduleCheck, 1000 * retryCount); // Exponential backoff
             return;
           } else {
-            console.error('Max retries reached. Reinitializing content script.');
-            setTimeout(init, 5000); // Attempt to reinitialize after 5 seconds
+            console.error('Max retries reached. Attempting to reinitialize content script.');
+            setTimeout(() => {
+              console.log('Reinitializing content script...');
+              init();
+            }, 5000); // Attempt to reinitialize after 5 seconds
             return;
           }
         }
@@ -245,7 +257,7 @@ function init() {
     init();
   });
 
-  console.log('Robust change detection set up');
+  console.log('Robust change detection set up - Initialization complete');
 }
 
 // Run the initialization
