@@ -237,12 +237,6 @@ function init() {
   document.addEventListener('click', handleUserInteraction);
   document.addEventListener('keyup', handleUserInteraction);
 
-  // Listen for extension context changes
-  chrome.runtime.onInstalled.addListener(() => {
-    console.log('Extension installed or updated. Reinitializing...');
-    init();
-  });
-
   console.log('New change detection logic set up - Initialization complete');
 }
 
