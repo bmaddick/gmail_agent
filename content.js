@@ -144,12 +144,16 @@ function handleEmailContent() {
   if (isEmailThreadOpen()) {
     console.log('Email thread is open - Extracting content');
     const emailContent = extractEmailContent();
+    console.log('Extracted email content:', emailContent.substring(0, 100) + '...'); // Log first 100 characters
+
     if (emailContent.trim()) {
       console.log('Email content extracted successfully. Length:', emailContent.length);
       displayContent('Summarizing email... Please wait.'); // Show loading message
 
       const sendMessageWithRetry = (retries = 3) => {
         console.log(`Sending message to background script. Retries left: ${retries}`);
+        console.log('Message payload:', { action: 'summarizeEmail', content: emailContent.substring(0, 100) + '...' });
+
         chrome.runtime.sendMessage({ action: 'summarizeEmail', content: emailContent }, (response) => {
           if (chrome.runtime.lastError) {
             console.error('Runtime error:', chrome.runtime.lastError);
@@ -163,15 +167,16 @@ function handleEmailContent() {
             return;
           }
 
-          console.log('Received response from background script:', response);
+          console.log('Received response from background script:', JSON.stringify(response, null, 2));
           if (response && response.summary) {
             console.log('Summary received successfully. Length:', response.summary.length);
+            console.log('Summary preview:', response.summary.substring(0, 100) + '...');
             displayContent(response.summary);
           } else if (response && response.error) {
             console.error('Error received from background script:', response.error);
             displayContent(`Error: ${response.error}. Please try again.`, true);
           } else {
-            console.error('Unexpected response from background script:', response);
+            console.error('Unexpected response from background script:', JSON.stringify(response, null, 2));
             displayContent('Unexpected error occurred. Please try again or refresh the page.', true);
           }
         });
