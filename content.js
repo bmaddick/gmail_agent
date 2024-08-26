@@ -195,20 +195,18 @@ function init() {
   // Display the initial message
   displayContent("Waiting for an email to be opened...");
 
-  // Set up a more efficient check for changes
   let lastUrl = location.href;
   let lastEmailContent = '';
-  let retryCount = 0;
-  const MAX_RETRIES = 5;
 
-  const checkForChanges = () => {
-    console.log('Checking for changes...');
-    const currentUrl = location.href;
-    if (currentUrl !== lastUrl) {
-      lastUrl = currentUrl;
-      console.log('URL changed to:', currentUrl);
-      handleEmailContent();
-    } else if (isEmailThreadOpen()) {
+  // Function to handle URL changes
+  const handleUrlChange = (newUrl) => {
+    console.log('URL changed to:', newUrl);
+    handleEmailContent();
+  };
+
+  // Function to handle user interactions
+  const handleUserInteraction = () => {
+    if (isEmailThreadOpen()) {
       const currentEmailContent = extractEmailContent();
       if (currentEmailContent !== lastEmailContent) {
         lastEmailContent = currentEmailContent;
@@ -218,38 +216,26 @@ function init() {
     }
   };
 
-  // Use requestAnimationFrame for smoother performance
-  const scheduleCheck = () => {
-    requestAnimationFrame(() => {
-      try {
-        checkForChanges();
-        retryCount = 0; // Reset retry count on successful execution
-      } catch (error) {
-        console.error('Error in checkForChanges:', error);
-        if (chrome.runtime.lastError) {
-          console.error('Chrome runtime error:', chrome.runtime.lastError);
-        }
-        if (error.message.includes('Extension context invalidated') || chrome.runtime.lastError) {
-          if (retryCount < MAX_RETRIES) {
-            retryCount++;
-            console.log(`Retrying checkForChanges (${retryCount}/${MAX_RETRIES})`);
-            setTimeout(scheduleCheck, 1000 * retryCount); // Exponential backoff
-            return;
-          } else {
-            console.error('Max retries reached. Attempting to reinitialize content script.');
-            setTimeout(() => {
-              console.log('Reinitializing content script...');
-              init();
-            }, 5000); // Attempt to reinitialize after 5 seconds
-            return;
-          }
+  // Set up MutationObserver to detect DOM changes
+  const observer = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+      if (mutation.type === 'childList' || mutation.type === 'subtree') {
+        const currentUrl = location.href;
+        if (currentUrl !== lastUrl) {
+          lastUrl = currentUrl;
+          handleUrlChange(currentUrl);
         }
       }
-      setTimeout(scheduleCheck, 1000); // Check every second
-    });
-  };
+    }
+  });
 
-  scheduleCheck();
+  // Configure and start the observer
+  const observerConfig = { childList: true, subtree: true };
+  observer.observe(document.body, observerConfig);
+
+  // Listen for user interactions
+  document.addEventListener('click', handleUserInteraction);
+  document.addEventListener('keyup', handleUserInteraction);
 
   // Listen for extension context changes
   chrome.runtime.onInstalled.addListener(() => {
@@ -257,7 +243,7 @@ function init() {
     init();
   });
 
-  console.log('Robust change detection set up - Initialization complete');
+  console.log('New change detection logic set up - Initialization complete');
 }
 
 // Run the initialization
