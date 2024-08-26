@@ -72,26 +72,35 @@ function toggleSummary() {
 
 // Function to display the summary or error message
 function displayContent(content, isError = false) {
-  console.log('Displaying content');
+  console.log('Displaying content - Start');
+  console.log('Is error:', isError);
+  console.log('Content to display:', content);
+
   const summaryContainer = createSummaryContainer();
+  console.log('Summary container created/retrieved');
 
   // Clear previous content
+  console.log('Clearing previous content');
   while (summaryContainer.firstChild) {
     summaryContainer.removeChild(summaryContainer.firstChild);
   }
 
   // Create and append header
+  console.log('Creating header');
   const header = document.createElement('h3');
   header.textContent = isError ? 'Error' : 'Email Summary';
   header.style.color = isError ? 'red' : 'black';
   summaryContainer.appendChild(header);
 
   // Create and append paragraph
+  console.log('Creating paragraph');
   const paragraph = document.createElement('p');
   paragraph.textContent = content;
   paragraph.style.color = isError ? 'red' : 'black';
   summaryContainer.appendChild(paragraph);
+
   console.log('Content updated:', content);
+  console.log('Displaying content - End');
 }
 
 // Function to extract email content
