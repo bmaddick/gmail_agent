@@ -1,8 +1,12 @@
 // Gmail Agent Background Script
-const fs = require('fs');
+// This script handles the core functionality of the Gmail Agent extension,
+// including communication with the content script and the Python backend service.
+
+const fs = require('js');
 const path = require('path');
 
 // Set up logging
+// This logger writes both to a file and to the console for easier debugging
 const logFilePath = path.join(__dirname, 'background.log');
 const logger = {
   log: (message) => {
@@ -20,6 +24,7 @@ const logger = {
 };
 
 // Function to handle messages from the content script
+// This listener processes requests from content.js, primarily for email summarization
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'summarizeEmail') {
     logger.log('Received summarizeEmail request from tab ' + sender.tab.id);
@@ -28,6 +33,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ error: 'No email content provided' });
       return true;
     }
+    // Call the summarizeEmail function and handle the response
     summarizeEmail(request.content)
       .then(summary => {
         logger.log('Summarization successful. Summary length: ' + summary.length);
@@ -45,10 +51,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Function to communicate with the Python service
+// This function sends the email content to the Python backend for summarization
 async function summarizeEmail(content) {
   logger.log('Attempting to summarize email with content length: ' + content.length);
   try {
     logger.log('Sending request to summarization service');
+    // Send a POST request to the local Python service
     const response = await fetch('http://localhost:5000/summarize', {
       method: 'POST',
       headers: {
@@ -68,9 +76,10 @@ async function summarizeEmail(content) {
       throw new Error('Summary not found in response data');
     }
     logger.log('Successfully parsed response data');
-    console.log('Summary received:', data.summary); // New console.log statement
+    console.log('Summary received:', data.summary); // Log the received summary
     return data.summary;
   } catch (error) {
+    // Detailed error handling and logging
     logger.error('Detailed error in summarizeEmail: ' + error);
     logger.error('Error stack: ' + error.stack);
     if (error.message.includes('Failed to fetch')) {
@@ -85,6 +94,7 @@ async function summarizeEmail(content) {
 }
 
 // Test case function with fake email content
+// This function is used for testing the summarizeEmail functionality
 function testSummarizeEmail() {
   const fakeEmailContent = `
     Subject: Important Project Update
@@ -118,6 +128,7 @@ function testSummarizeEmail() {
 testSummarizeEmail();
 
 // Initialize the background script
+// This function sets up the background script and implements a health check
 function init() {
   try {
     logger.log('Gmail Agent background script initializing...');

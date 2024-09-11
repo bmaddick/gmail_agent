@@ -1,10 +1,13 @@
 // Gmail Agent Content Script
+// This script is responsible for interacting with the Gmail interface,
+// extracting email content, and displaying summaries to the user.
 
 console.log('Gmail Agent content script loaded - Script start');
 console.log('Current URL:', window.location.href);
 console.log('Document readyState:', document.readyState);
 
 // Function to create and display the summary container
+// This function creates or retrieves the container for displaying email summaries
 function createSummaryContainer() {
   console.log('Creating summary container');
   let summaryContainer = document.getElementById('gmail-agent-summary');
@@ -31,7 +34,7 @@ function createSummaryContainer() {
     document.body.appendChild(summaryContainer);
     console.log('Summary container appended to body');
 
-    // Add user controls
+    // Add user controls for toggling and refreshing the summary
     const controlsDiv = document.createElement('div');
     controlsDiv.style.cssText = `
       display: flex;
@@ -56,6 +59,7 @@ function createSummaryContainer() {
   return summaryContainer;
 }
 
+// Function to toggle the visibility of the summary container
 function toggleSummary() {
   const summaryContainer = document.getElementById('gmail-agent-summary');
   const toggleButton = summaryContainer.querySelector('button');
@@ -70,7 +74,8 @@ function toggleSummary() {
   }
 }
 
-// Function to display the summary or error message
+// Function to display the summary or error message in the summary container
+// This function is called by handleEmailContent to update the UI with new content
 function displayContent(content, isError = false) {
   console.log('Displaying content - Start');
   console.log('Is error:', isError);
@@ -103,7 +108,8 @@ function displayContent(content, isError = false) {
   console.log('Displaying content - End');
 }
 
-// Function to extract email content
+// Function to extract email content from the current Gmail view
+// This function is called by handleEmailContent to get the email text for summarization
 function extractEmailContent() {
   console.log('Extracting email content');
   const emailBodies = document.querySelectorAll('.a3s.aiL');
@@ -119,7 +125,8 @@ function extractEmailContent() {
   return '';
 }
 
-// Function to check if an email thread is open
+// Function to check if an email thread is currently open in Gmail
+// This function is used by handleEmailContent and handleUserInteraction
 function isEmailThreadOpen() {
   console.log('Checking if email thread is open');
   const url = window.location.href;
@@ -137,7 +144,8 @@ function isEmailThreadOpen() {
   return isOpen;
 }
 
-// Function to handle email content
+// Function to handle email content extraction and summarization
+// This is the main function that orchestrates the summarization process
 function handleEmailContent() {
   console.log('Handling email content - Start');
 
@@ -150,6 +158,7 @@ function handleEmailContent() {
       console.log('Email content extracted successfully. Length:', emailContent.length);
       displayContent('Summarizing email... Please wait.'); // Show loading message
 
+      // Function to send message to background script with retry mechanism
       const sendMessageWithRetry = (retries = 3) => {
         console.log(`Sending message to background script. Retries left: ${retries}`);
         console.log('Message payload:', { action: 'summarizeEmail', content: emailContent.substring(0, 100) + '...' });
@@ -195,7 +204,8 @@ function handleEmailContent() {
   console.log('Handling email content - End');
 }
 
-// Function to display filler text
+// Function to display filler text when no email is open
+// This function is called by init to show an initial message
 function displayFillerText() {
   const fillerText = "Hi! I'm your Gmail assistant. I don't interact with this page, but if you open an email thread I can summarize the contents, help you respond to the thread, and provide helpful ideas for you.";
   console.log('Displaying filler text');
@@ -203,6 +213,7 @@ function displayFillerText() {
 }
 
 // Initialize the content script
+// This function sets up event listeners and observers to detect changes in Gmail
 function init() {
   console.log('Initializing content script - Start');
 
