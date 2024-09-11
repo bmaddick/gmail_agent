@@ -1,3 +1,8 @@
+# email_agents.py
+# This file is part of the Gmail Agent extension and serves as the backend API
+# for email summarization and response drafting. It interacts with the Ollama API
+# for AI-powered text processing and provides endpoints for the browser extension.
+
 import ollama
 from flask import Flask, request, jsonify
 import threading
@@ -5,9 +10,12 @@ import logging
 import json
 from typing import Dict, Any
 
+# Initialize Flask application
 app = Flask(__name__)
 
 # Configure logging
+# This setup ensures that all important events and errors are logged
+# both to a file (email_agents.log) and to the console for easier debugging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 file_handler = logging.FileHandler('email_agents.log')
 file_handler.setLevel(logging.INFO)
@@ -16,12 +24,28 @@ logger = logging.getLogger(__name__)
 logger.addHandler(file_handler)
 
 def summarize_email(email_content):
+    """
+    Summarize the given email content using the Ollama API.
+
+    This function is called by the /summarize endpoint (handled by handle_summarize)
+    in response to requests from the browser extension's background script (background.js).
+
+    Args:
+        email_content (str): The full content of the email to be summarized.
+
+    Returns:
+        str: A summary of the email content.
+
+    Raises:
+        ollama.ResponseError: If there's an error with the Ollama API request.
+        Exception: For any other unexpected errors during the summarization process.
+    """
     logger.info(f"Summarizing email with content length: {len(email_content)}")
     try:
         prompt = f"Summarize the following email content:\n\n{email_content}\n\nSummary:"
         logger.info(f"Sending prompt to ollama.chat: {prompt[:100]}...")  # Log first 100 chars of prompt
         response = ollama.chat(
-            model="llama2",  # Corrected model name
+            model="llama2",  # Using the llama2 model for summarization
             messages=[
                 {
                     "role": "user",
@@ -32,7 +56,7 @@ def summarize_email(email_content):
         logger.info(f"Received response from ollama.chat: {response}")
         summary = response["message"]["content"].strip()
         logger.info(f"Successfully generated summary with length: {len(summary)}")
-        print(f"Generated summary: {summary}")  # Print the summary
+        print(f"Generated summary: {summary}")  # Print the summary for console logging
         return summary
     except ollama.ResponseError as e:
         logger.error(f"Ollama API error in summarize_email: {str(e)}")
@@ -42,6 +66,22 @@ def summarize_email(email_content):
         raise
 
 def draft_response(summary):
+    """
+    Draft a response email based on the provided summary.
+
+    This function uses the Ollama API to generate a draft response to an email thread.
+    It's called by the /draft endpoint in the Flask app (see handle_draft function).
+
+    Args:
+        summary (str): A summary of the email thread to respond to.
+
+    Returns:
+        str: The drafted response email content.
+
+    Raises:
+        ollama.ResponseError: If there's an error with the Ollama API call.
+        Exception: For any other unexpected errors.
+    """
     logger.info(f"Drafting response based on summary length: {len(summary)}")
     prompt = f"""{summary} #### Draft a
             response email based on the contents of the thread."""
@@ -49,7 +89,7 @@ def draft_response(summary):
     try:
         logger.info(f"Sending prompt to ollama.chat for drafting: {prompt[:100]}...")
         response = ollama.chat(
-            model="llama2",  # Corrected model name
+            model="llama2",  # Using the llama2 model for response generation
             messages=[
                 {
                     "role": "user",
@@ -70,6 +110,21 @@ def draft_response(summary):
 
 @app.route('/summarize', methods=['POST'])
 def handle_summarize():
+    """
+    Flask route handler for the /summarize endpoint.
+
+    This function is called when a POST request is made to the /summarize endpoint.
+    It receives email content from the request, processes it using the summarize_email
+    function, and returns the summary as a JSON response.
+
+    Interaction with other components:
+    - Receives data from background.js in the browser extension
+    - Calls summarize_email function (defined in this file) to process the email content
+    - Returns the summary, which is then sent back to content.js via background.js
+
+    Returns:
+        JSON response with the email summary or an error message
+    """
     logger.info("Received request to /summarize endpoint")
     email_content = request.json.get('email_content')
     if not email_content:
@@ -86,6 +141,18 @@ def handle_summarize():
 
 @app.route('/draft', methods=['POST'])
 def handle_draft():
+    """
+    Flask route handler for the /draft endpoint.
+
+    This function is called when a POST request is made to the /draft endpoint.
+    It receives a summary of an email thread and generates a draft response.
+
+    The function interacts with the draft_response function (defined in this file)
+    to generate the draft using the Ollama API.
+
+    Returns:
+        JSON response containing the drafted email or an error message.
+    """
     logger.info("Received request to /draft endpoint")
     summary = request.json.get('summary')
     if not summary:
@@ -93,19 +160,28 @@ def handle_draft():
         return jsonify({"error": "No summary provided"}), 400
 
     try:
+        # Call the draft_response function to generate a draft
         draft = draft_response(summary)
         logger.info("Successfully drafted response")
         return jsonify({"draft": draft})
     except Exception as e:
+        # Log any errors that occur during the drafting process
         logger.error(f"Error in handle_draft: {str(e)}", exc_info=True)
         return jsonify({"error": "An error occurred while drafting the response"}), 500
 
+# Function to start the Flask application
+# This function is called to run the Flask server, which handles API requests from the browser extension
 def run_flask_app():
     logger.info("Starting Flask app")
+    # Run the Flask app on localhost:5000
+    # Note: This is the endpoint that background.js communicates with for email processing
     app.run(host='localhost', port=5000)
 
 if __name__ == "__main__":
-    # Sample email contents for testing various types of emails
+    # Test suite for email summarization functionality
+    # This section contains sample emails of various types to test the summarize_email function
+
+    # Sample email contents for testing different email types
     test_emails = [
         {
             "type": "Meeting Invite",
@@ -197,15 +273,25 @@ if __name__ == "__main__":
         }
     ]
 
+    # Start the email summarization test process
     logger.info("Starting email summarization tests")
 
+    # Iterate through each test email and attempt to summarize it
     for test_email in test_emails:
         logger.info(f"Testing {test_email['type']} email")
         try:
+            # Call the summarize_email function (defined earlier in this file)
+            # This function communicates with the Ollama API to generate the summary
             summary = summarize_email(test_email['content'])
             logger.info(f"Email summarization successful for {test_email['type']}")
             logger.info(f"Generated summary:\n{summary}")
         except Exception as e:
+            # Log any errors that occur during the summarization process
             logger.error(f"Error during {test_email['type']} email summarization test: {str(e)}", exc_info=True)
 
+    # Log completion of all tests
     logger.info("Email summarization tests completed")
+
+    # Note: These tests are run when the script is executed directly
+    # They are not run when the script is imported as a module in the Flask application
+    # The actual summarization endpoint is handled by the /summarize route defined earlier
