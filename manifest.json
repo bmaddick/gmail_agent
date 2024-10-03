@@ -16,13 +16,19 @@
         "https://mail.google.com/*",
         "https://mail.google.com/mail/u/0/#inbox"
       ],
-      "js": ["content.js"]
+      "js": ["static/js/content.js"]
     }
   ],
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "index.html"
   },
   "background": {
-    "service_worker": "background.js"
-  }
+    "service_worker": "static/js/background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["static/css/*.css", "static/js/*.js", "static/media/*"],
+      "matches": ["https://mail.google.com/*"]
+    }
+  ]
 }
